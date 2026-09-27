@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Molly Menu</title>
+<style>
+    :root {
+        --main-color: #FAF0E6;
+        --main-rgb: 250, 240, 230;
+        --back-color: #000000;
+        --back-rgb: 0, 0, 0;
+        --back-alpha: 0.8;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+        width: 100%;
+        height: 100%;
+        background: transparent;
+        overflow: hidden;
+        font-family: sans-serif;
+        color: white;
+    }
+    #menu-root {
+        font-family: sans-serif; color: white; position: fixed;
+        top: 21.5vh; left: 14.25vh; width: 35vh; z-index: 1000;
+        opacity: 0; transform: scale(0.95);
+        transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    #menu-root.visible { opacity: 1; transform: scale(1); }
+    #menu-root.hiding { opacity: 0; transform: scale(0.95); }
+    #tooltip-container {
+        font-family: sans-serif; position: fixed;
+        top: 21.5vh; left: calc(14.25vh + 35vh + 0.5vh); width: 20vh;
+        background-color: rgba(10, 10, 10, 0.975); border-radius: 0.45vh;
+        padding: 0.5vh 1vh; font-size: 1.3vh; display: none;
+        opacity: 0; transform: scale(0.95);
+        transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    #tooltip-container.visible { display: block; opacity: 1; transform: scale(1) translateY(0); }
+    #tooltip-container.hiding { opacity: 0; transform: scale(0.95) translateY(-0.45vh); }
+    .tooltip-item { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5vh; min-height: 2.2vh; box-sizing: border-box; }
+    .tooltip-item:last-child { margin-bottom: 0; }
+    .tooltip-label { color: rgba(255, 255, 255, 0.85); flex-shrink: 0; }
+    .tooltip-value-container { display: flex; align-items: center; gap: 0.5vh; min-height: 2.2vh; flex-shrink: 0; }
+    .tooltip-value { font-weight: 500; color: rgba(255, 255, 255, 0.85); line-height: 1.2; }
+    .tooltip-bar { width: 0.45vh; height: 1.45vh; background-color: rgba(255, 255, 255, 0.1); border-radius: 0.45vh; position: relative; overflow: hidden; flex-shrink: 0; }
+    .tooltip-bar-fill { position: absolute; bottom: 0; left: 0; width: 100%; border-radius: 0.15vh; transition: height 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
+    #header-wrapper {
+        background-color: #000000; border-radius: 0.45vh; overflow: hidden;
+        margin-bottom: 0.45vh; opacity: 0; transform: translateY(-0.9vh);
+        transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    #header-wrapper.visible { opacity: 1; transform: translateY(0); }
+    #header-wrapper.hiding { opacity: 0; transform: translateY(-0.9vh); }
+    #menu-container {
+        background-color: rgba(0, 0, 0, 0.8);
+        border-radius: 0.45vh; overflow: hidden; position: relative;
+        opacity: 0; transform: translateY(-0.45vh);
+        transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    #menu-container.visible { opacity: 1; transform: translateY(0); }
+    #menu-container.hiding { opacity: 0; transform: translateY(-0.45vh); }
+    #menu-banner { padding: 0; overflow: hidden; }
+    #banner-image { width: 100%; height: 10vh; object-fit: cover; display: block; }
+    #menu-tabs { display: flex; }
+    .tab-item {
+        flex: 1; min-width: 0; padding: 0.8vh 0; font-size: 1.1vh; text-align: center;
+        cursor: pointer; color: rgba(255, 255, 255, 0.6); background: transparent;
+        border-bottom-left-radius: 0.5vh; border-bottom-right-radius: 0.5vh;
+        transition: 0.3s; position: relative; overflow: hidden;
+    }
+    .tab-item::before {
+        content: ''; position: absolute; bottom: 0; left: 0; width: 100%; height: 100%;
+        background: linear-gradient(to top, rgba(250, 240, 230, 0.3) 0%, transparent 85%);
+        transform: scaleY(0); transform-origin: bottom; transition: 0.5s; z-index: -1;
+    }
+    .tab-item.single { min-width: 8vh; flex-grow: 0; padding: 0.8vh 1vh; flex-basis: auto; }
+    .tab-item.active { color: white; font-weight: 500; }
+    .tab-item.active::before { transform: scaleY(1); }
+    #menu-items { position: relative; max-height: 39vh; overflow: hidden; }
+    #items-list { position: relative; transition: transform 0.25s ease-out; }
+    .menu-item {
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 1vh 1vh; font-size: 1.2vh; border-radius: 0.2vh;
+        transition: background-color 0.2s ease-in-out; height: 3vh; box-sizing: border-box;
+    }
+    .name-container { display: flex; align-items: center; gap: 0.9vh; min-width: 0; }
+    .name-container .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .menu-item-icon { width: 1.4vh; height: 1.4vh; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; color: rgba(255, 255, 255); }
+    .menu-item-icon svg { width: 100%; height: 100%; }
+    .separator-container { display: flex; align-items: center; width: 100%; gap: 1vh; }
+    .separator-bar { flex: 1; height: 0.3vh; background-color: rgba(255, 255, 255, 0.8); min-width: 2vh; border-radius: 0.2vh; }
+    .separator-text { color: rgba(255, 255, 255, 0.9); font-weight: 500; white-space: nowrap; padding: 0 0.5vh; }
+    .menu-item.separator { justify-content: center; font-weight: 500; color: rgba(255, 255, 255, 0.6); padding: 0.8vh 1.5vh; pointer-events: none; }
+    #selection-highlight {
+        position: absolute; margin-top: 0.2vh; left: 0.2vh; right: 0.2vh; height: 2.4vh;
+        background-color: rgba(var(--main-rgb), 0.35); border: 0.1vh solid rgba(var(--main-rgb), 0.35);
+        box-shadow: 0 0 0.2vh 0.2vh rgba(var(--main-rgb), 0.45); border-radius: 0.4vh;
+        z-index: -1; transition: top 0.25s ease-out;
+    }
+    .components-container { display: flex; gap: 1vh; align-items: center; }
+    .component { display: flex; align-items: center; gap: 0.5vh; }
+    .component.icon { order: -1; }
+    .component .slider-component { display: flex; align-items: center; justify-content: center; width: auto; font-size: 1.2vh; text-align: center; user-select: none; }
+    .component .slider-component span { margin: 0 0.8vh; min-width: 5vh; position: relative; left: 1vh; }
+    .component .slider-component span::before { content: '- '; color: rgba(255, 255, 255, 0.6); }
+    .component .slider-component span::after { content: ' -'; color: rgba(255, 255, 255, 0.6); }
+    .component .range-component { position: relative; width: 8vh; height: 2vh; display: flex; align-items: center; }
+    .component .range-value { position: absolute; top: -1.6vh; left: 50%; transform: translateX(-50%) scale(0); background: #333; color: #fff; padding: 0.2vh 0.6vh; border-radius: 0.3vh; font-size: 1.1vh; transition: transform 0.15s ease-out, opacity 0.15s ease-out; opacity: 0; pointer-events: none; }
+    .component .range-component:hover .range-value { transform: translateX(-50%) scale(1); opacity: 1; }
+    .component .range-track { position: absolute; left: 0; width: 100%; height: 0.4vh; background-color: rgba(255, 255, 255, 0.2); border-radius: 0.2vh; z-index: 1; }
+    .component .range-fill { position: absolute; left: 0; height: 0.4vh; background-color: #fff; border-radius: 0.2vh; z-index: 2; }
+    .component input[type="range"] { -webkit-appearance: none; appearance: none; width: 100%; height: 0.4vh; background: transparent; outline: none; padding: 0; margin: 0; cursor: pointer; position: relative; z-index: 3; }
+    .component input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 1.4vh; height: 1.4vh; background: #fff; border-radius: 50%; cursor: pointer; margin-top: 0; }
+    .component input[type="checkbox"] { -webkit-appearance: none; appearance: none; background-color: #333; margin: 0; width: 3.3vh; height: 1.4vh; border-radius: 1vh; cursor: pointer; position: relative; transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out; }
+    .component input[type="checkbox"]::after { content: ''; position: absolute; top: 0.2vh; left: 0.2vh; width: 1vh; height: 1vh; background-color: #f0f0f0; border-radius: 50%; transition: left 0.2s ease-in-out; }
+    .component input[type="checkbox"]:checked { background-color: rgba(250, 240, 230, 0.75); }
+    .component input[type="checkbox"]:checked::after { left: 2vh; }
+    #menu-footer {
+        background-color: #000000; display: flex; justify-content: space-between; align-items: center;
+        border-radius: 0.45vh; padding: 0.55vh 0.95vh; font-size: 1.15vh; color: white; margin-top: 0.45vh; height: 1.95vh;
+        opacity: 0; transform: translateY(1vh);
+        transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    #menu-footer.visible { opacity: 1; transform: translateY(0); }
+    #menu-footer.hiding { opacity: 0; transform: translateY(1vh); }
+    #footer-left { font-weight: 500; display: flex; align-items: center; }
+    #footer-left img { height: 1.9vh; margin-right: 0.5vh; display: block; }
+    #footer-right { font-weight: 500; }
+    #menu-scrollbar { position: absolute; left: -1.2vh; top: 13.25vh; width: 0.6vh; height: 39vh; opacity: 0; transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+    #menu-scrollbar.visible { opacity: 1; }
+    #menu-scrollbar.hiding { opacity: 0; }
+    #scrollbar-track { width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.8); border-radius: 0.4vh; position: relative; }
+    #scrollbar-thumb { position: absolute; top: 0; left: 0; width: 100%; background-color: rgba(250, 240, 230, 0.7); border-radius: 0.2vh; transition: top 0.25s ease-out, height 0.25s ease-out; min-height: 2vh; }
+    #scrollbar-thumb:hover { background-color: rgba(250, 240, 230, 0.9); }
+    .notify-stack { position: fixed; bottom: 2vh; right: 2vh; display: flex; flex-direction: column; gap: 0.8vh; z-index: 9999; pointer-events: none; }
+    .notify-card { background: rgba(0, 0, 0, 0.62); border-left: 0.25vh solid var(--accent, #3d9bff); color: #fff; font-family: sans-serif; width: 32vh; max-width: 85vw; overflow: hidden; outline: none; border-top: none; border-right: none; border-bottom: none; opacity: 0; transform: translateX(80px); animation: notifyFlyIn 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+    .notify-card.closing { animation: notifyFlyOut 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+    @keyframes notifyFlyIn { from { opacity: 0; transform: translateX(80px); } to { opacity: 1; transform: translateX(0); } }
+    @keyframes notifyFlyOut { from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(80px); } }
+    .notify-body { display: flex; flex-direction: row; align-items: center; padding: 1vh 1.2vh 0.9vh 1.2vh; gap: 1vh; }
+    .notify-icon-wrap { width: 2.2vh; height: 2.2vh; min-width: 2.2vh; border-radius: 50%; background: var(--accent, #3d9bff); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .notify-icon { font-size: 1.1vh; color: #fff; line-height: 1; display: block; text-align: center; width: 1.1vh; height: 1.1vh; font-style: normal; font-weight: 700; }
+    .notify-text { display: flex; flex-direction: column; gap: 0.2vh; min-width: 0; flex: 1; }
+    .notify-header { font-size: 1.35vh; font-weight: 530; color: #ffffff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: 0.02em; }
+    .notify-message { font-size: 1.05vh; font-weight: 300; color: rgba(200, 200, 200, 0.85); line-height: 1.4; word-wrap: break-word; word-break: break-word; }
+    .notify-bar { height: 0.25vh; width: 100%; background: rgba(255, 255, 255, 0.06); }
+    .notify-bar-fill { height: 100%; background: var(--accent, #3d9bff); transition: width 0.1s linear; will-change: width; }
+    .input-overlay {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0, 0, 0, 0.5); z-index: 999999;
+        color: white; font-weight: 300; font-family: sans-serif; font-size: 1.2vh;
+        transition: 0.3s; display: none;
+    }
+    .input-box {
+        background-color: rgba(0, 0, 0, 0.8);
+        border-radius: 0.25vh; display: flex; flex-direction: column;
+        position: fixed; bottom: 17.5vh; left: 50%; transform: translateX(-50%);
+        height: auto; width: 55vh; overflow: hidden;
+    }
+    .input-box > .input-header {
+        padding: 0.8vh 1vh; border-bottom: 0.1vh solid #FAF0E6;
+        width: 100%; font-size: 1.2vh;
+    }
+    .input-box input {
+        padding: 1.25vh 1vh; border: none; outline: none;
+        background: transparent; color: white; font-size: 1.2vh;
+    }
+    .input-header-inner { display: flex; align-items: center; gap: 0.5vh; }
+    .input-divider { width: 0.2vh; height: 1.5vh; background: white; }
+    .input-header-text { color: white; }
+    .live-list-container {
+        position: fixed; font-family: sans-serif; color: white;
+        border-radius: 0.45vh; padding: 0; font-size: 1.3vh; z-index: 1500;
+        opacity: 0; transform: scale(0.95);
+        transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        overflow: hidden;
+    }
+    .live-list-container.visible { opacity: 1; transform: scale(1); }
+    .live-list-container.hiding { opacity: 0; transform: scale(0.95); }
+    .live-list-header {
+        position: relative; background-color: rgba(var(--back-rgb), var(--back-alpha));
+        border-bottom: 0.1vh solid var(--main-color);
+        padding: 0.6vh 0.7vh 0.6vh 1.3vh; font-weight: 500; font-size: 1.1vh;
+        display: flex; align-items: center; gap: 0.6vh;
+    }
+    .live-list-header::before {
+        content: ''; position: absolute; left: 0; top: 0.5vh; bottom: 0.5vh;
+        width: 0.3vh; border-radius: 0.5vh; background-color: var(--main-color);
+    }
+    .live-list-header-icon {
+        margin-left: 0.25vh; width: 1.3vh; height: 1.3vh; flex-shrink: 0;
+        display: inline-flex; align-items: center; justify-content: center;
+        color: var(--main-color);
+    }
+    .live-list-header-icon svg { width: 100%; height: 100%; }
+    .live-list-header-text { flex: 1; }
+    .live-list-items { background-color: rgba(var(--back-rgb), var(--back-alpha)); padding: 0.45vh 0.7vh; }
+    .live-list-item {
+        display: flex; justify-content: space-between; align-items: center;
+        margin: 0.35vh 0; font-size: 1vh; box-sizing: border-box;
+    }
+    .live-list-label { flex-shrink: 0; }
+    .live-list-value { font-weight: 500; font-size: 0.9vh; text-align: right; }
+    .live-list-value .state-on  { color: #3ddc68; font-weight: 600; }
+    .live-list-value .state-off { color: #ff3d3d; font-weight: 600; }
+</style>
+</head>
+<body>
+
+<div id="menu-root">
+    <div id="header-wrapper">
+        <div id="menu-banner">
+            <img src="https://cdn.discordapp.com/attachments/967779721272233984/1549750896655732816/molly.png?ex=6ab7b2fe&is=6ab6617e&hm=bebc5ca25f89df9009c12fc27dd5babe79371c04cd98a294b020506ae43777ce&" alt="Menu Banner" id="banner-image">
+        </div>
+        <div id="menu-tabs"></div>
+    </div>
+    <div id="menu-container">
+        <div id="menu-items">
+            <div id="selection-highlight"></div>
+            <div id="items-list"></div>
+        </div>
+    </div>
+    <div id="menu-scrollbar">
+        <div id="scrollbar-track">
+            <div id="scrollbar-thumb"></div>
+        </div>
+    </div>
+    <div id="menu-footer">
+        <span id="footer-left"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHJlY3Qgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiByeD0iNiIgZmlsbD0iIzFmZGE4YyIvPjxwYXRoIGQ9Ik01IDE3VjdsNyA3IDctN3YxMCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMTAxNzEzIiBzdHJva2Utd2lkdGg9IjIuNSIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjwvc3ZnPg==" alt=""> Molly</span>
+        <span id="footer-right">0/0</span>
+    </div>
+</div>
+
+<div id="tooltip-container"></div>
+<div class="notify-stack" id="notify-stack"></div>
+
+<div class="input-overlay" id="input-dialog">
+    <div class="input-box">
+        <div class="input-header">
+            <div class="input-header-inner">
+                <div class="input-divider"></div>
+                <div class="input-header-text" id="input-header-text">Enter Value</div>
+            </div>
+        </div>
+        <input type="text" id="input-field" placeholder="">
+    </div>
+</div>
+
+<script>
+(() => {
+    const preloadImages = [
+        'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PGcgZmlsbD0ibm9uZSIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSIxLjgiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHBhdGggZD0iTTUgMTdIM3YtNWwyLTZoMTRsMiA2djVoLTJNMyAxMmgxOE03IDE3aDEwIi8+PGNpcmNsZSBjeD0iNiIgY3k9IjE3IiByPSIyIi8+PGNpcmNsZSBjeD0iMTgiIGN5PSIxNyIgcj0iMiIvPjwvZz48L3N2Zz4=',
+        'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PGcgZmlsbD0ibm9uZSIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSIxLjgiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHBhdGggZD0ibTMgMTAgOS03IDkgN001IDl2MTJoMTRWOU05IDIxdi04aDZ2OCIvPjwvZz48L3N2Zz4='
+    ];
+    preloadImages.forEach(url => {
+        const img = new Image();
+        img.onload = async () => { try { if ('decode' in img) await img.decode(); } catch (e) {} };
+        img.onerror = () => {};
+        img.src = url;
+    });
+})();
+
+const lucideIconPaths = {
+    user: '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />',
+    globe: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/>',
+    crosshair: '<circle cx="12" cy="12" r="10" /><line x1="22" x2="18" y1="12" y2="12" /><line x1="6" x2="2" y1="12" y2="12" /><line x1="12" x2="12" y1="6" y2="2" /><line x1="12" x2="12" y1="22" y2="18" />',
+    settings: '<path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/><circle cx="12" cy="12" r="3"/>',
+    keyboard: '<path d="M10 8h.01" /><path d="M12 12h.01" /><path d="M14 8h.01" /><path d="M16 12h.01" /><path d="M18 8h.01" /><path d="M6 8h.01" /><path d="M7 16h10" /><path d="M8 12h.01" /><rect width="20" height="16" x="2" y="4" rx="2" />',
+    shield: '<path d="M10 15H6a4 4 0 0 0-4 4v2"/><path d="M22 17.5c0 2.499-1.75 3.749-3.83 4.474a.5.5 0 0 1-.335-.005c-2.085-.72-3.835-1.97-3.835-4.47V14a.5.5 0 0 1 .5-.499c1 0 2.25-.6 3.12-1.36a.6.6 0 0 1 .76-.001c.875.765 2.12 1.36 3.12 1.36a.5.5 0 0 1 .5.5z"/><circle cx="9" cy="7" r="4"/>',
+    eye: '<path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0" /><circle cx="12" cy="12" r="3" />'
+};
+
+function lucideIconSvg(name) {
+    const inner = lucideIconPaths[name];
+    if (!inner) return '';
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + inner + '</svg>';
+}
+
+const menuRootEl = document.getElementById('menu-root');
+const tooltipContainer = document.getElementById('tooltip-container');
+const notifyStack = document.getElementById('notify-stack');
+const inputDialog = document.getElementById('input-dialog');
+
+const notifyTypeConfig = {
+    info:    { icon: 'i', color: '#3d9bff' },
+    error:   { icon: '×', color: '#ff3d3d' },
+    success: { icon: '✓', color: '#3ddc68' },
+    warning: { icon: '!', color: '#FF9800' }
+};
+
+window.showNotification = function(setType, header, message, duration) {
+    setType = (setType || 'info').toLowerCase();
+    var cfg = notifyTypeConfig[setType] || notifyTypeConfig.info;
+    var card = document.createElement('div');
+    card.className = 'notify-card';
+    card.style.setProperty('--accent', cfg.color);
+    var body = document.createElement('div'); body.className = 'notify-body';
+    var iconWrap = document.createElement('div'); iconWrap.className = 'notify-icon-wrap';
+    var iconEl = document.createElement('i'); iconEl.className = 'notify-icon'; iconEl.textContent = cfg.icon;
+    iconWrap.appendChild(iconEl);
+    var textWrap = document.createElement('div'); textWrap.className = 'notify-text';
+    var headerEl = document.createElement('span'); headerEl.className = 'notify-header'; headerEl.textContent = header || '';
+    var messageEl = document.createElement('span'); messageEl.className = 'notify-message'; messageEl.textContent = message || '';
+    textWrap.appendChild(headerEl); textWrap.appendChild(messageEl);
+    body.appendChild(iconWrap); body.appendChild(textWrap);
+    var bar = document.createElement('div'); bar.className = 'notify-bar';
+    var barFill = document.createElement('div'); barFill.className = 'notify-bar-fill'; barFill.style.width = '100%';
+    bar.appendChild(barFill);
+    card.appendChild(body); card.appendChild(bar);
+    notifyStack.appendChild(card);
+    var startTime = Date.now(); var rafId = null; duration = duration || 5000;
+    var tick = function() {
+        var elapsed = Date.now() - startTime;
+        var remaining = Math.max(duration - elapsed, 0);
+        var progress = (remaining / duration) * 100;
+        barFill.style.width = progress + '%';
+        if (remaining <= 0) {
+            cancelAnimationFrame(rafId);
+            card.classList.add('closing');
+            setTimeout(function() { if (card.parentNode) card.parentNode.removeChild(card); }, 260);
+            return;
+        }
+        rafId = requestAnimationFrame(tick);
+    };
+    rafId = requestAnimationFrame(tick);
+};
+
+window.showInput = function(data) {
+    if (!data) return;
+    document.getElementById('input-header-text').textContent = data.header || 'Enter Value';
+    var inputField = document.getElementById('input-field');
+    inputField.value = data.value || '';
+    inputField.placeholder = data.placeholder || '';
+    inputDialog.style.display = 'block';
+    setTimeout(function() {
+        inputDialog.style.opacity = '1';
+        inputField.focus();
+    }, 10);
+};
+
+window.updateInput = function(data) {
+    if (!data) return;
+    var inputField = document.getElementById('input-field');
+    if (inputField) inputField.value = data.value || '';
+};
+
+window.hideInput = function() {
+    inputDialog.style.opacity = '0';
+    setTimeout(function() { inputDialog.style.display = 'none'; }, 250);
+};
+
+window.updateTooltip = function(tooltipData) {
+    if (!tooltipData || tooltipData.length === 0) {
+        tooltipContainer.classList.add('hiding'); tooltipContainer.classList.remove('visible');
+        setTimeout(function() {
+            if (tooltipContainer.classList.contains('hiding')) {
+                tooltipContainer.style.display = 'none';
+                tooltipContainer.classList.remove('hiding');
+            }
+        }, 300);
+        return;
+    }
+    if (tooltipContainer.classList.contains('hiding')) tooltipContainer.classList.remove('hiding');
+    if (tooltipContainer.style.display === 'none') { tooltipContainer.style.display = 'block'; tooltipContainer.offsetHeight; }
+    tooltipContainer.innerHTML = '';
+    tooltipData.forEach(function(item) {
+        var itemEl = document.createElement('div'); itemEl.className = 'tooltip-item';
+        var labelEl = document.createElement('span'); labelEl.className = 'tooltip-label'; labelEl.textContent = item.label;
+        var valueContainer = document.createElement('div'); valueContainer.className = 'tooltip-value-container';
+        var valueEl = document.createElement('span'); valueEl.className = 'tooltip-value';
+        if (typeof item.text === 'object' && item.text !== null) {
+            valueEl.textContent = item.text.value !== undefined ? item.text.value : '';
+            valueEl.style.color = item.text.color || 'rgba(255, 255, 255, 0.85)';
+        } else {
+            valueEl.textContent = item.text !== undefined ? item.text : (item.value !== undefined ? item.value : '');
+            valueEl.style.color = 'rgba(255, 255, 255, 0.85)';
+        }
+        valueContainer.appendChild(valueEl);
+        if (item.bar) {
+            var barEl = document.createElement('div'); barEl.className = 'tooltip-bar';
+            var barFillEl = document.createElement('div'); barFillEl.className = 'tooltip-bar-fill';
+            barFillEl.style.backgroundColor = item.bar.color || '#ffffff';
+            barFillEl.style.height = Math.max(0, Math.min(100, item.bar.percent || 0)) + '%';
+            barEl.appendChild(barFillEl); valueContainer.appendChild(barEl);
+        }
+        itemEl.appendChild(labelEl); itemEl.appendChild(valueContainer);
+        tooltipContainer.appendChild(itemEl);
+    });
+    if (!tooltipContainer.classList.contains('visible')) {
+        requestAnimationFrame(function() { tooltipContainer.classList.add('visible'); });
+    }
+};
+
+window.showMenu = function() {
+    var headerWrapper = document.getElementById('header-wrapper');
+    var menuContainer = document.getElementById('menu-container');
+    var menuFooter = document.getElementById('menu-footer');
+    var scrollbar = document.getElementById('menu-scrollbar');
+    if (window.hideMenuTimeout) { clearTimeout(window.hideMenuTimeout); window.hideMenuTimeout = null; }
+    var isMenuHidden = menuRootEl.style.display === 'none' || !menuRootEl.classList.contains('visible');
+    if (isMenuHidden) {
+        [menuRootEl, headerWrapper, menuContainer, menuFooter, scrollbar].forEach(function(el) { if (el) el.classList.remove('hiding', 'visible'); });
+        menuRootEl.style.display = 'block'; menuRootEl.offsetHeight;
+        requestAnimationFrame(function() {
+            menuRootEl.classList.add('visible');
+            if (headerWrapper)  setTimeout(function() { headerWrapper.classList.add('visible'); }, 50);
+            if (menuContainer)  setTimeout(function() { menuContainer.classList.add('visible'); }, 100);
+            if (menuFooter)     setTimeout(function() { menuFooter.classList.add('visible'); }, 150);
+            if (scrollbar)      setTimeout(function() { scrollbar.classList.add('visible'); }, 100);
+        });
+        window.updateSelection(window.currentSelectionIndex || 0);
+    } else {
+        [menuRootEl, headerWrapper, menuContainer, menuFooter].forEach(function(el) {
+            if (el) { el.classList.remove('hiding'); if (!el.classList.contains('visible')) el.classList.add('visible'); }
+        });
+        if (scrollbar) { scrollbar.classList.remove('hiding'); if (!scrollbar.classList.contains('visible')) scrollbar.classList.add('visible'); }
+    }
+};
+
+window.hideMenu = function() {
+    var headerWrapper = document.getElementById('header-wrapper');
+    var menuContainer = document.getElementById('menu-container');
+    var menuFooter = document.getElementById('menu-footer');
+    var menuScrollbar = document.getElementById('menu-scrollbar');
+    if (window.hideMenuTimeout) { clearTimeout(window.hideMenuTimeout); window.hideMenuTimeout = null; }
+    [menuRootEl, headerWrapper, menuContainer, menuFooter, menuScrollbar].forEach(function(el) {
+        if (el) { el.classList.remove('visible'); el.classList.add('hiding'); }
+    });
+    window.hideMenuTimeout = setTimeout(function() {
+        if (menuRootEl && menuRootEl.classList.contains('hiding')) {
+            [menuRootEl, headerWrapper, menuContainer, menuFooter, menuScrollbar].forEach(function(el) { if (el) el.classList.remove('hiding', 'visible'); });
+        }
+        window.hideMenuTimeout = null;
+    }, 300);
+};
+
+window.buildMenu = function(config) {
+    window.currentMenuConfig = config;
+    var tabs = config.tabs || [{ label: 'Main', options: config.options || [] }];
+    var tabsContainer = document.getElementById('menu-tabs');
+    tabsContainer.innerHTML = '';
+    if (tabs.length > 0) {
+        tabs.forEach(function(tab, index) {
+            var tabEl = document.createElement('div');
+            tabEl.className = 'tab-item';
+            if (tabs.length === 1) tabEl.classList.add('single');
+            tabEl.textContent = tab.label;
+            tabEl.dataset.index = index;
+            tabsContainer.appendChild(tabEl);
+        });
+    }
+    var headerWrapper = document.getElementById('header-wrapper');
+    var menuContainer = document.getElementById('menu-container');
+    var menuFooter = document.getElementById('menu-footer');
+    var scrollbar = document.getElementById('menu-scrollbar');
+    menuRootEl.style.display = 'block';
+    [menuRootEl, headerWrapper, menuContainer, menuFooter, scrollbar].forEach(function(el) { if (el) el.classList.remove('visible', 'hiding'); });
+    menuRootEl.offsetHeight;
+    setTimeout(function() { window.showMenu(); }, 10);
+};
+
+window.updateMenuData = function(menuData) {
+    window.currentMenuConfig = menuData;
+    var tabsContainer = document.getElementById('menu-tabs');
+    if (tabsContainer && menuData.tabs) {
+        var currentTabCount = tabsContainer.children.length;
+        if (currentTabCount !== menuData.tabs.length) {
+            tabsContainer.innerHTML = '';
+            if (menuData.tabs.length > 0) {
+                menuData.tabs.forEach(function(tab, index) {
+                    var tabEl = document.createElement('div');
+                    tabEl.className = 'tab-item';
+                    if (menuData.tabs.length === 1) tabEl.classList.add('single');
+                    tabEl.textContent = tab.label;
+                    tabEl.dataset.index = index;
+                    tabsContainer.appendChild(tabEl);
+                });
+            }
+        } else {
+            Array.from(tabsContainer.children).forEach(function(tabEl, index) {
+                if (menuData.tabs[index]) tabEl.textContent = menuData.tabs[index].label;
+            });
+        }
+    }
+    window.updateCurrentTabItems();
+};
+
+window.updateCurrentTabItems = function() {
+    if (!window.currentMenuConfig || !window.currentMenuConfig.tabs) return;
+    var currentTabData = window.currentMenuConfig.tabs[window.currentTabIndex || 0];
+    if (!currentTabData) return;
+    var options = currentTabData.options || [];
+    window.buildItemsForTab(options);
+    window.menuConfig = options;
+    window.updateFooterInfo();
+};
+
+window.updateTab = function(tabIndex) {
+    window.currentTabIndex = tabIndex;
+    var headerWrapper = document.getElementById('header-wrapper');
+    var menuContainer = document.getElementById('menu-container');
+    var menuFooter = document.getElementById('menu-footer');
+    var scrollbar = document.getElementById('menu-scrollbar');
+    if (window.hideMenuTimeout) { clearTimeout(window.hideMenuTimeout); window.hideMenuTimeout = null; }
+    [menuRootEl, headerWrapper, menuContainer, menuFooter, scrollbar].forEach(function(el) {
+        if (el) { el.classList.remove('hiding'); el.classList.add('visible'); }
+    });
+    var tabs = window.currentMenuConfig.tabs || [{ label: 'Main', options: window.currentMenuConfig.options || [] }];
+    var currentTabData = tabs[tabIndex];
+    var options = [];
+    if (currentTabData) options = currentTabData.options || [];
+    window.menuConfig = options;
+    var tabsContainer = document.getElementById('menu-tabs');
+    var tabElements = tabsContainer.querySelectorAll('.tab-item');
+    tabElements.forEach(function(el, index) {
+        if (index === tabIndex) el.classList.add('active'); else el.classList.remove('active');
+    });
+    window.buildItemsForTab(options);
+    window.currentSelectionIndex = 0;
+    var firstValidIndex = window.findFirstValidItem(options);
+    if (firstValidIndex !== -1) window.currentSelectionIndex = firstValidIndex;
+    window.scrollOffset = 0;
+    document.getElementById('items-list').style.transform = 'translateY(0px)';
+    window.updateFooterInfo();
+};
+
+window.buildItemsForTab = function(options) {
+    var itemsList = document.getElementById('items-list');
+    itemsList.innerHTML = '';
+    options.forEach(function(option, index) {
+        var item = document.createElement('div');
+        item.className = 'menu-item';
+        item.dataset.index = index;
+        if (option.separator) {
+            item.classList.add('separator');
+            var sepContainer = document.createElement('div'); sepContainer.className = 'separator-container';
+            var leftBar = document.createElement('div'); leftBar.className = 'separator-bar';
+            var text = document.createElement('div'); text.className = 'separator-text'; text.textContent = option.name || '';
+            var rightBar = document.createElement('div'); rightBar.className = 'separator-bar';
+            sepContainer.appendChild(leftBar);
+            if (option.name) sepContainer.appendChild(text);
+            sepContainer.appendChild(rightBar);
+            item.appendChild(sepContainer);
+        } else {
+            var nameContainer = document.createElement('div'); nameContainer.className = 'name-container';
+            if (option.navIcon) {
+                var navIconEl = document.createElement('span');
+                navIconEl.className = 'menu-item-icon';
+                navIconEl.innerHTML = lucideIconSvg(option.navIcon);
+                nameContainer.appendChild(navIconEl);
+            }
+            var nameSpan = document.createElement('span'); nameSpan.className = 'name'; nameSpan.textContent = option.name || '';
+            nameContainer.appendChild(nameSpan);
+            item.appendChild(nameContainer);
+            var compContainer = document.createElement('div'); compContainer.className = 'components-container';
+            if (option.checkbox) {
+                var cbComp = document.createElement('div'); cbComp.className = 'component';
+                var cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = option.checkbox.checked || false;
+                cbComp.appendChild(cb); compContainer.appendChild(cbComp);
+            }
+            if (option.range) {
+                var rangeComponent = document.createElement('div'); rangeComponent.className = 'component';
+                var rangeContainer = document.createElement('div'); rangeContainer.className = 'range-component';
+                var rangeValue = document.createElement('div'); rangeValue.className = 'range-value'; rangeValue.textContent = option.range.value || 0;
+                var rangeTrack = document.createElement('div'); rangeTrack.className = 'range-track';
+                var rangeFill = document.createElement('div'); rangeFill.className = 'range-fill';
+                var pct = ((option.range.value - option.range.min) / (option.range.max - option.range.min)) * 100;
+                rangeFill.style.width = pct + '%';
+                var rangeInput = document.createElement('input'); rangeInput.type = 'range';
+                rangeInput.min = option.range.min || 0; rangeInput.max = option.range.max || 100;
+                rangeInput.step = option.range.step || 1; rangeInput.value = option.range.value || 0;
+                rangeContainer.appendChild(rangeValue); rangeContainer.appendChild(rangeTrack);
+                rangeContainer.appendChild(rangeFill); rangeContainer.appendChild(rangeInput);
+                rangeComponent.appendChild(rangeContainer); compContainer.appendChild(rangeComponent);
+            }
+            if (option.slider) {
+                var sliderComponent = document.createElement('div'); sliderComponent.className = 'component';
+                var sliderContainer = document.createElement('div'); sliderContainer.className = 'slider-component';
+                var sliderValue = document.createElement('span');
+                var currentOption = option.slider.options.find(function(opt) { return opt.value === option.slider.value; });
+                sliderValue.textContent = currentOption ? currentOption.label : '';
+                sliderContainer.appendChild(sliderValue); sliderComponent.appendChild(sliderContainer);
+                compContainer.appendChild(sliderComponent);
+            }
+            if (option.button) {
+                var btnComponent = document.createElement('div'); btnComponent.className = 'component';
+                var btn = document.createElement('button'); btn.textContent = option.button.label || '';
+                btnComponent.appendChild(btn); compContainer.appendChild(btnComponent);
+            }
+            item.appendChild(compContainer);
+        }
+        itemsList.appendChild(item);
+    });
+};
+
+window.updateFooterInfo = function() {
+    var footerRight = document.getElementById('footer-right');
+    var menuConfig = window.menuConfig || [];
+    if (footerRight && menuConfig) {
+        var totalOptions = 0;
+        for (var i = 0; i < menuConfig.length; i++) if (!menuConfig[i].separator) totalOptions++;
+        var currentOptionNumber = 0; var csi = window.currentSelectionIndex || 0;
+        for (var i = 0; i <= csi && i < menuConfig.length; i++) if (!menuConfig[i].separator) currentOptionNumber++;
+        footerRight.textContent = currentOptionNumber + '/' + totalOptions;
+    }
+};
+
+window.findFirstValidItem = function(options) {
+    for (var i = 0; i < options.length; i++) if (!options[i].separator) return i;
+    return 0;
+};
+
+window.updateSelection = function(selectionIndex) {
+    window.currentSelectionIndex = selectionIndex;
+    var itemsList = document.getElementById('items-list');
+    var selectionHighlight = document.getElementById('selection-highlight');
+    var scrollbarThumb = document.getElementById('scrollbar-thumb');
+    var menuConfig = window.menuConfig || [];
+    requestAnimationFrame(function() {
+        var itemElements = itemsList.querySelectorAll('.menu-item');
+        if (itemElements.length === 0 || selectionIndex < 0 || selectionIndex >= itemElements.length) {
+            selectionHighlight.style.display = 'none'; return;
+        }
+        selectionHighlight.style.display = 'block';
+        var currentOptionNumber = 0; var totalOptions = 0;
+        for (var i = 0; i < menuConfig.length; i++) if (!menuConfig[i].separator) totalOptions++;
+        for (var i = 0; i <= selectionIndex; i++) if (i < menuConfig.length && !menuConfig[i].separator) currentOptionNumber++;
+        var footerRight = document.getElementById('footer-right');
+        if (footerRight) footerRight.textContent = currentOptionNumber + '/' + totalOptions;
+        var menuItemsContainer = document.getElementById('menu-items');
+        var selectedElement = itemElements[selectionIndex];
+        var itemHeightPx = 0;
+        if (selectedElement) itemHeightPx = selectedElement.offsetHeight;
+        else if (itemElements.length > 0) itemHeightPx = itemElements[0].offsetHeight;
+        if (itemHeightPx === 0 && menuItemsContainer && itemElements.length > 0) itemHeightPx = menuItemsContainer.offsetHeight / itemElements.length;
+        var containerHeightPx = menuItemsContainer ? menuItemsContainer.offsetHeight : 0;
+        var maxVisibleItems = (containerHeightPx > 0 && itemHeightPx > 0) ? Math.floor(containerHeightPx / itemHeightPx) : itemElements.length;
+        var totalItems = itemElements.length;
+        var selectedElementTop = selectedElement ? selectedElement.offsetTop : (selectionIndex * itemHeightPx);
+        var selectedElementBottom;
+        if (selectedElement) {
+            var nextElement = itemElements[selectionIndex + 1];
+            if (nextElement) selectedElementBottom = nextElement.offsetTop;
+            else selectedElementBottom = selectedElement.offsetTop + selectedElement.offsetHeight;
+        } else selectedElementBottom = selectedElementTop + itemHeightPx;
+        var visibleTop = window.scrollOffset || 0;
+        var visibleBottom = visibleTop + containerHeightPx;
+        var scrollOffset = window.scrollOffset || 0;
+        if (selectedElementTop < visibleTop) scrollOffset = selectedElementTop;
+        else if (selectedElementBottom > visibleBottom) scrollOffset = selectedElementBottom - containerHeightPx;
+        var maxScroll = 0;
+        if (itemElements.length > 0) {
+            var lastElement = itemElements[itemElements.length - 1];
+            var lastElementBottom = lastElement.offsetTop + lastElement.offsetHeight;
+            maxScroll = Math.max(0, lastElementBottom - containerHeightPx);
+        }
+        scrollOffset = Math.max(0, Math.min(scrollOffset, maxScroll));
+        window.scrollOffset = scrollOffset;
+        itemsList.style.transform = 'translateY(-' + scrollOffset + 'px)';
+        if (selectedElement) {
+            var highlightTop = selectedElementTop - scrollOffset;
+            selectionHighlight.style.top = highlightTop + 'px';
+        }
+        if (totalItems > maxVisibleItems) {
+            var totalContentHeightPx = totalItems * itemHeightPx;
+            var scrollbarTrack = document.getElementById('scrollbar-track');
+            scrollbarTrack.style.height = containerHeightPx + 'px';
+            var thumbHeightPx = Math.max(20, (containerHeightPx / totalContentHeightPx) * containerHeightPx);
+            var maxThumbTop = containerHeightPx - thumbHeightPx;
+            var scrollPercentage = maxScroll > 0 ? scrollOffset / maxScroll : 0;
+            var thumbTopPx = scrollPercentage * maxThumbTop;
+            scrollbarThumb.style.height = thumbHeightPx + 'px';
+            scrollbarThumb.style.top = thumbTopPx + 'px';
+        } else {
+            var scrollbarTrack2 = document.getElementById('scrollbar-track');
+            scrollbarTrack2.style.height = containerHeightPx + 'px';
+            scrollbarThumb.style.height = containerHeightPx + 'px';
+            scrollbarThumb.style.top = '0px';
+        }
+    });
+};
+
+window.doScroll = function(delta) {
+    var menuConfig = window.menuConfig || [];
+    var csi = window.currentSelectionIndex || 0;
+    var dir = delta > 0 ? 1 : -1;
+    var n = menuConfig.length;
+    if (n === 0) return;
+    for (var _ = 0; _ < n; _++) {
+        csi = csi + dir;
+        if (csi < 0) csi = n - 1;
+        if (csi >= n) csi = 0;
+        if (!menuConfig[csi].separator) break;
+    }
+    window.updateSelection(csi);
+};
+
+window.updateCheckbox = function(itemIndex, isChecked) {
+    var itemsList = document.getElementById('items-list');
+    var itemEl = itemsList.querySelector('.menu-item[data-index="' + itemIndex + '"]');
+    if (itemEl) {
+        var cb = itemEl.querySelector('input[type="checkbox"]');
+        if (cb) cb.checked = isChecked;
+    }
+};
+
+window.setDropdownOptions = function(optId, options) {
+    if (!window.currentMenuConfig || !window.currentMenuConfig.tabs) return;
+    options = options || [];
+    for (var ti = 0; ti < window.currentMenuConfig.tabs.length; ti++) {
+        var tab = window.currentMenuConfig.tabs[ti];
+        if (!tab.options) continue;
+        for (var oi = 0; oi < tab.options.length; oi++) {
+            var opt = tab.options[oi];
+            if (opt.id !== optId || !opt.slider) continue;
+            var prevLabel = (opt.slider.options && opt.slider.options[opt.slider.value - 1])
+                            ? opt.slider.options[opt.slider.value - 1].label
+                            : null;
+            opt.slider.options = options;
+            var newVal = 1;
+            for (var i = 0; i < options.length; i++) {
+                if (options[i].label === prevLabel) { newVal = options[i].value; break; }
+            }
+            opt.slider.value = newVal;
+            if (ti === (window.currentTabIndex || 0)) {
+                window.menuConfig = tab.options;
+                window.buildItemsForTab(tab.options);
+                window.updateSelection(window.currentSelectionIndex || 0);
+            }
+            return;
+        }
+    }
+};
+
+window.createLiveList = function(data) {
+    if (!data || !data.id) return;
+    var container = document.getElementById('live-list-' + data.id);
+    if (!container) {
+        container = document.createElement('div');
+        container.className = 'live-list-container';
+        container.id = 'live-list-' + data.id;
+        document.body.appendChild(container);
+    }
+    var header = document.createElement('div');
+    header.className = 'live-list-header';
+    var headerText = document.createElement('span');
+    headerText.className = 'live-list-header-text';
+    headerText.textContent = data.header || 'Live List';
+    if (!data.icon) headerText.style.textAlign = 'center';
+    header.appendChild(headerText);
+    if (data.icon) {
+        var iconEl = document.createElement('span');
+        iconEl.className = 'live-list-header-icon';
+        iconEl.innerHTML = lucideIconSvg(data.icon);
+        header.appendChild(iconEl);
+    }
+    var itemsContainer = document.createElement('div');
+    itemsContainer.className = 'live-list-items';
+    if (data.items && Array.isArray(data.items)) {
+        data.items.forEach(function(item) {
+            var itemDiv = document.createElement('div');
+            itemDiv.className = 'live-list-item';
+            var label = document.createElement('span'); label.className = 'live-list-label'; label.textContent = item.label || '';
+            var value = document.createElement('span'); value.className = 'live-list-value';
+            value.innerHTML = item.valueHtml !== undefined ? item.valueHtml : (item.value || '');
+            itemDiv.appendChild(label); itemDiv.appendChild(value);
+            itemsContainer.appendChild(itemDiv);
+        });
+    }
+    container.innerHTML = '';
+    container.appendChild(header);
+    container.appendChild(itemsContainer);
+    if (data.width) container.style.width = data.width;
+    if (data.position) {
+        if (data.position.top !== undefined && data.position.top !== null) { container.style.top = data.position.top; container.style.bottom = 'auto'; }
+        else if (data.position.bottom !== undefined && data.position.bottom !== null) { container.style.bottom = data.position.bottom; container.style.top = 'auto'; }
+        if (data.position.left !== undefined && data.position.left !== null) { container.style.left = data.position.left; container.style.right = 'auto'; }
+        else if (data.position.right !== undefined && data.position.right !== null) { container.style.right = data.position.right; container.style.left = 'auto'; }
+    }
+    if (data.visible) setTimeout(function() { container.classList.add('visible'); }, 10);
+};
+
+window.updateLiveList = function(data) {
+    if (!data || !data.id) return;
+    var container = document.getElementById('live-list-' + data.id);
+    if (!container) { window.createLiveList(data); return; }
+    var header = container.querySelector('.live-list-header');
+    if (header && (data.header || data.icon !== undefined)) {
+        header.innerHTML = '';
+        var headerText = document.createElement('span');
+        headerText.className = 'live-list-header-text';
+        headerText.textContent = data.header || 'Live List';
+        if (!data.icon) headerText.style.textAlign = 'center';
+        header.appendChild(headerText);
+        if (data.icon) {
+            var iconEl = document.createElement('span');
+            iconEl.className = 'live-list-header-icon';
+            iconEl.innerHTML = lucideIconSvg(data.icon);
+            header.appendChild(iconEl);
+        }
+    }
+    var itemsContainer = container.querySelector('.live-list-items');
+    if (itemsContainer && data.items !== undefined) {
+        itemsContainer.innerHTML = '';
+        if (Array.isArray(data.items)) {
+            data.items.forEach(function(item) {
+                var itemDiv = document.createElement('div');
+                itemDiv.className = 'live-list-item';
+                var label = document.createElement('span'); label.className = 'live-list-label'; label.textContent = item.label || '';
+                var value = document.createElement('span'); value.className = 'live-list-value';
+                value.innerHTML = item.valueHtml !== undefined ? item.valueHtml : (item.value || '');
+                itemDiv.appendChild(label); itemDiv.appendChild(value);
+                itemsContainer.appendChild(itemDiv);
+            });
+        }
+    }
+    if (data.position) {
+        if (data.position.top !== undefined && data.position.top !== null) { container.style.top = data.position.top; container.style.bottom = 'auto'; }
+        if (data.position.left !== undefined && data.position.left !== null) { container.style.left = data.position.left; container.style.right = 'auto'; }
+        else if (data.position.right !== undefined && data.position.right !== null) { container.style.right = data.position.right; container.style.left = 'auto'; }
+    }
+    if (data.visible !== undefined) {
+        if (data.visible) { container.classList.remove('hiding'); container.classList.add('visible'); }
+        else { container.classList.remove('visible'); container.classList.add('hiding'); }
+    }
+};
+
+window.showLiveList = function(id) {
+    var c = document.getElementById('live-list-' + id);
+    if (c) { c.classList.remove('hiding'); c.classList.add('visible'); }
+};
+
+window.hideLiveList = function(id) {
+    var c = document.getElementById('live-list-' + id);
+    if (c) { c.classList.remove('visible'); c.classList.add('hiding'); }
+};
+</script>
+</body>
+</html>
