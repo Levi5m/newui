@@ -117,16 +117,16 @@
     .component input[type="checkbox"]:checked { background-color: rgba(250, 240, 230, 0.75); }
     .component input[type="checkbox"]:checked::after { left: 2vh; }
     #menu-footer {
-        background-color: #000000; display: flex; justify-content: space-between; align-items: center;
-        border-radius: 0.45vh; padding: 0.55vh 0.95vh; font-size: 1.15vh; color: white; margin-top: 0.45vh; height: 1.95vh;
-        opacity: 0; transform: translateY(1vh);
-        transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    }
+    background-color: #000000; display: flex; justify-content: space-between; align-items: center;
+    border-radius: 0.45vh; padding: 0.55vh 0.95vh; font-size: 1.15vh; color: white; margin-top: 0.45vh; height: 1.95vh;
+    opacity: 0; transform: translateY(1vh);
+    transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
     #menu-footer.visible { opacity: 1; transform: translateY(0); }
     #menu-footer.hiding { opacity: 0; transform: translateY(1vh); }
-    #footer-left { font-weight: 500; display: flex; align-items: center; }
-    #footer-left img { height: 1.9vh; margin-right: 0.5vh; display: block; }
-    #footer-right { font-weight: 500; }
+    #footer-left { font-weight: 500; display: flex; align-items: center; line-height: 1; }
+    #footer-left img { height: 1.9vh; min-height: 14px; width: auto; margin-right: 0.5vh; display: block; }
+    #footer-right { font-weight: 500; line-height: 1; }
     #menu-scrollbar { position: absolute; left: -1.2vh; top: 13.25vh; width: 0.6vh; height: 39vh; opacity: 0; transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
     #menu-scrollbar.visible { opacity: 1; }
     #menu-scrollbar.hiding { opacity: 0; }
